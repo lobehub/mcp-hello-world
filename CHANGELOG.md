@@ -2,6 +2,37 @@
 
 # Changelog
 
+### [Version&nbsp;1.1.2](https://github.com/lobehub/mcp-hello-world/compare/v1.1.1...v1.1.2)
+<sup>Released on **2025-04-20**</sup>
+
+
+#### 💄 Styles
+
+- **misc**: Improve output.
+
+
+<br/>
+
+
+
+<details>
+<summary><kbd>Improvements and Fixes</kbd></summary>
+
+
+
+#### Styles
+
+* **misc**: Improve output ([3dd383c](https://github.com/lobehub/mcp-hello-world/commit/3dd383c))
+
+</details>
+
+
+<div align="right">
+
+[![](https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square)](#readme-top)
+
+</div>
+
 ### [Version&nbsp;1.1.1](https://github.com/lobehub/mcp-hello-world/compare/v1.1.0...v1.1.1)
 <sup>Released on **2025-04-20**</sup>
 
