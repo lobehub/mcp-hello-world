@@ -67,7 +67,7 @@ export function createServer() {
       content: [
         {
           type: "text",
-          text: `Hello ${message}`,
+          text: `You said: ${message}`,
         },
       ],
     })
