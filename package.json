@@ -4,6 +4,7 @@
   "description": "A simple Hello World MCP server",
   "keywords": [
     "lobehub",
+    "model-context-protocol",
     "sdk",
     "chatgpt",
     "openai"
