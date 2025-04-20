@@ -1,90 +1,138 @@
 #!/usr/bin/env node
 
 import express from "express";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { randomUUID } from "node:crypto"; // Import randomUUID
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Ensure McpServer is imported if createServer doesn't provide it directly
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { InMemoryEventStore } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "./server.js";
 
 async function main() {
-  // Create the server
-  const server = createServer();
-  
+  // Create the MCP server instance
+  const server: McpServer = createServer(); // Assuming createServer returns an McpServer instance
+
   // Create Express app
   const app = express();
+  app.use(express.json()); // Use express.json() middleware for POST bodies
   const port = process.env.PORT || 3000;
-  
-  // Server-side connections
-  const connections = new Map();
-  
-  // Handle SSE connections
-  app.get("/sse", async (req, res) => {
-    // Generate a unique connection ID (UUID format)
-    const sessionId = req.query.sessionId as string || 
-                     `${Math.random().toString(36).substring(2, 15)}-${Date.now().toString(36)}`;
-    
+
+  // Map to store transports by session ID
+  const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+
+  // Handle POST requests for client-to-server communication and initialization
+  app.post('/mcp', async (req, res) => {
+    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+    let transport: StreamableHTTPServerTransport;
+
+    console.log(`POST /mcp request received. Session ID: ${sessionId}`);
+    console.log('Request body:', req.body);
+
     try {
-      // Create a new SSE transport
-      const transport = new SSEServerTransport(`/messages?sessionId=${sessionId}`, res);
-      connections.set(sessionId, transport);
-      
-      // Connect the server to this transport
-      await server.connect(transport);
-    } catch (error: any) {
-      console.error('Error establishing SSE connection:', error);
-      // If headers already sent due to transport.start(), don't try to set them again
-      if (!res.headersSent) {
-        res.status(500).end(`Server error: ${error.message || 'Unknown error'}`);
-      }
-    }
-    
-    // Handle client disconnect
-    req.on("close", () => {
-      if (connections.has(sessionId)) {
-        connections.delete(sessionId);
-        console.error(`Client ${sessionId} disconnected`);
-      }
-    });
-  });
-  
-  // Handle messages from client
-  app.post("/messages", express.json(), async (req, res) => {
-    try {
-      // Extract sessionId from query parameters
-      const sessionId = req.query.sessionId as string;
-      
-      console.log(`Received message for session ${sessionId}, body:`, req.body);
-      
-      if (!sessionId || !connections.has(sessionId)) {
-        // If no sessionId or connection not found, try the first connection
-        if (connections.size === 0) {
-          return res.status(400).json({ error: "No active connections" });
-        }
-        console.log('Using first available connection');
-        const transport = connections.values().next().value;
-        await transport.handlePostMessage(req, res, req.body);
+      if (sessionId && transports[sessionId]) {
+        // Reuse existing transport
+        console.log(`Reusing transport for session ${sessionId}`);
+        transport = transports[sessionId];
+      } else if (!sessionId /* && isInitializeRequest(req.body) */) {
+        // New initialization request (assuming first request without session ID is init)
+        // TODO: Implement a more robust check for initialization requests if needed
+        console.log("Initializing new session and transport.");
+        const eventStore = new InMemoryEventStore();
+        transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          eventStore, // Enable resumability
+          onsessioninitialized: (newSessionId) => {
+            // Store the transport by session ID once initialized
+            console.log(`Session ${newSessionId} initialized. Storing transport.`);
+            transports[newSessionId] = transport;
+          }
+        });
+
+        // Clean up transport when closed
+        transport.onclose = () => {
+          if (transport.sessionId && transports[transport.sessionId]) {
+            console.log(`Session ${transport.sessionId} closed. Removing transport.`);
+            delete transports[transport.sessionId];
+          }
+        };
+
+        // Connect the MCP server to the new transport
+        console.log("Connecting MCP server to the new transport.");
+        await server.connect(transport); // Connect the server instance from createServer()
       } else {
-        // Use the specific connection for this session
-        console.log(`Using connection for session ${sessionId}`);
-        const transport = connections.get(sessionId);
-        await transport.handlePostMessage(req, res, req.body);
+        // Invalid request (e.g., non-init request without a valid session ID)
+        console.error(`Bad Request: Invalid session ID (${sessionId}) or request type.`);
+        res.status(400).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32000, // Using a generic JSON-RPC server error code range
+            message: `Bad Request: Invalid or missing session ID for this request type. Session ID received: ${sessionId}`,
+          },
+          id: req.body?.id || null, // Attempt to get the request ID from body
+        });
+        return;
       }
+
+      // Handle the request using the transport
+      console.log(`Handling POST request for session ${transport.sessionId || '(pending initialization)'}`);
+      await transport.handleRequest(req, res, req.body);
+
     } catch (error: any) {
-      console.error('Error handling message:', error);
+      console.error(`Error handling POST /mcp for session ${sessionId}:`, error);
       if (!res.headersSent) {
-        res.status(500).json({ error: `Internal server error: ${error.message || 'Unknown error'}` });
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32000,
+            message: `Internal Server Error: ${error.message || 'Unknown error'}`,
+          },
+          id: req.body?.id || null,
+        });
       }
     }
   });
-  
-  // Debug: log available methods
-  console.error('Available methods in the MCP server:');
-  console.error('Server object keys:', Object.keys(server));
-  console.error('Server constructor:', server.constructor.name);
-  
+
+  // Reusable handler for GET and DELETE requests
+  const handleSessionRequest = async (req: express.Request, res: express.Response) => {
+    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+    console.log(`${req.method} /mcp request received. Session ID: ${sessionId}`);
+
+    if (!sessionId || !transports[sessionId]) {
+      console.error(`Invalid or missing session ID for ${req.method} request: ${sessionId}`);
+      res.status(400).send('Invalid or missing session ID');
+      return;
+    }
+
+    const transport = transports[sessionId];
+    try {
+      console.log(`Handling ${req.method} request for session ${sessionId}`);
+      await transport.handleRequest(req, res);
+    } catch (error: any) {
+      console.error(`Error handling ${req.method} /mcp for session ${sessionId}:`, error);
+      // transport.handleRequest might handle sending error responses for GET/DELETE
+      if (!res.headersSent) {
+         res.status(500).send(`Internal Server Error: ${error.message || 'Unknown error'}`);
+      }
+    }
+  };
+
+  // Handle GET requests for server-to-client notifications
+  app.get('/mcp', handleSessionRequest);
+
+  // Handle DELETE requests for session termination
+  app.delete('/mcp', handleSessionRequest);
+
+  // Debug: log available methods (Keep if useful)
+  // console.error('Available methods in the MCP server:');
+  // console.error('Server object keys:', Object.keys(server));
+  // console.error('Server constructor:', server.constructor.name);
+
   // Start the server
   app.listen(port, () => {
-    console.error(`Hello World MCP Server running on http://localhost:${port}`);
-    console.error(`- Connect to /sse for server-sent events`);
-    console.error(`- Send messages to /messages endpoint`);
+    console.error(`Hello World MCP Server (Streamable HTTP) running on http://localhost:${port}`);
+    console.error(`- Use POST /mcp for sending messages and initialization.`);
+    console.error(`- Use GET /mcp for receiving server notifications.`);
+    console.error(`- Use DELETE /mcp for terminating sessions.`);
+    console.error(`- Remember to include 'mcp-session-id' header for established sessions.`);
   });
 }
 

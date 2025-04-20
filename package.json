@@ -24,8 +24,7 @@
   },
   "sideEffects": false,
   "main": "./build/index.js",
-  "module": "./es/index.js",
-  "types": "./lib/index.d.ts",
+  "types": "./build/index.d.ts",
   "files": [
     "lib",
     "es",
