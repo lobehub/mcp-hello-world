@@ -25,13 +25,7 @@
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
   "files": [
-    "lib",
-    "es",
-    "client.d.ts",
-    "client.js",
-    "openapi.d.ts",
-    "openapi.js",
-    "schema.json"
+    "build"
   ],
   "scripts": {
     "build": "tsc",
