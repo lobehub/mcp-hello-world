@@ -1,0 +1,115 @@
+{
+  "name": "mcp-hello-world",
+  "version": "1.0.0",
+  "description": "A simple Hello World MCP server",
+  "keywords": [
+    "lobehub",
+    "sdk",
+    "chatgpt",
+    "openai"
+  ],
+  "homepage": "https://github.com/lobehub/mcp-hello-world",
+  "bugs": {
+    "url": "https://github.com/lobehub/mcp-hello-world/issues/new"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lobehub/mcp-hello-world.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "author": "LobeHub <i@lobehub.com>",
+  "bin": {
+    "mcp-hello-world": "./build/stdio.js"
+  },
+  "sideEffects": false,
+  "main": "./build/index.js",
+  "module": "./es/index.js",
+  "types": "./lib/index.d.ts",
+  "files": [
+    "lib",
+    "es",
+    "client.d.ts",
+    "client.js",
+    "openapi.d.ts",
+    "openapi.js",
+    "schema.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "ci": "npm run lint && npm run type-check",
+    "start": "node build/stdio.js",
+    "start:http": "node build/http.js",
+    "lint": "eslint \"{src,example}/**/*.{js,jsx,ts,tsx}\" --fix",
+    "lint:style": "stylelint \"{src,example}/**/*.{js,jsx,ts,tsx}\" --fix",
+    "prepack": "npm run build && clean-pkg-json",
+    "prepare": "husky install",
+    "prepublishOnly": "npm run build",
+    "prettier": "prettier -c --write --no-error-on-unmatched-pattern \"**/**\"",
+    "release": "semantic-release",
+    "test": "vitest --passWithNoTests",
+    "test:coverage": "vitest run --coverage  --passWithNoTests",
+    "test:update": "vitest -u",
+    "type-check": "tsc -p tsconfig-check.json"
+  },
+  "lint-staged": {
+    "*.json": [
+      "prettier --write --no-error-on-unmatched-pattern"
+    ],
+    "*.{js,jsx}": [
+      "prettier --write",
+      "stylelint --fix",
+      "eslint --fix"
+    ],
+    "*.{ts,tsx}": [
+      "prettier --parser=typescript --write",
+      "stylelint --fix",
+      "eslint --fix"
+    ]
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk":"^1.7.0",
+    "express": "^4.18.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^18",
+    "@lobehub/i18n-cli": "^1.10.0",
+    "@lobehub/lint": "latest",
+    "@testing-library/react": "^14.1.2",
+    "@types/lodash-es": "^4",
+    "@types/node": "^22",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@vitest/coverage-v8": "^1",
+    "clean-pkg-json": "^1",
+    "commitlint": "^18",
+    "dumi": "^2",
+    "dumi-theme-lobehub": "latest",
+    "eslint": "^8",
+    "husky": "^8",
+    "jsdom": "^22",
+    "leva": "^0",
+    "lint-staged": "^15",
+    "prettier": "^3",
+    "react": "^18",
+    "react-dom": "^18",
+    "remark": "^14",
+    "remark-cli": "^11",
+    "semantic-release": "^21",
+    "@types/express": "^4.17.21",
+    "rimraf": "^5.0.5",
+    "stylelint": "^15",
+    "ts-json-schema-generator": "^1.4.0",
+    "typescript": "^5",
+    "vitest": "^1"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
+}
