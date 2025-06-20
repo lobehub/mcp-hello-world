@@ -64,6 +64,19 @@ bunx mcp-hello-world
 
 The server will listen on standard input and output MCP responses to standard output. You can use tools like [MCP Inspector](https://github.com/lobehub/mcp-inspector) to connect to the process.
 
+To configure this server in your MCP client, add the following to your configuration:
+
+```json
+{
+  "mcpServers": {
+    "mcp-hello-world": {
+      "command": "npx",
+      "args": ["mcp-hello-world"]
+    }
+  }
+}
+```
+
 ### HTTP/SSE Mode
 
 If you need to debug via a network interface or test HTTP-based MCP clients.
