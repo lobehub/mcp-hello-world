@@ -20,6 +20,8 @@ This is a **minimal Model Context Protocol (MCP) server** implemented in TypeScr
 
 **Note:** This project is **not suitable for production environments** or deployment as a general-purpose MCP server.
 
+[![MCP Badge](https://lobehub.com/badge/mcp-full/lobehub-mcp-hello-world)](https://lobehub.com/mcp/lobehub-mcp-hello-world)
+
 ## Why Use `mcp-hello-world` in Tests?
 
 When testing code related to MCP clients, you usually don't want to depend on a real, potentially complex, and unpredictably responsive AI backend service. Using `mcp-hello-world` as a test double offers several advantages:
